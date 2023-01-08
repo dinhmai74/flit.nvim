@@ -15,7 +15,7 @@ local function flit(kwargs)
     end
     hl['highlight-cursor'](hl)
     vim.cmd('redraw')
-    local ch = require('leap.util')['get-input-by-keymap']({str = ">"})
+    local ch = require('leap.util')['get-input-by-keymap']({ str = ">" })
     hl['cleanup'](hl, { vim.fn.getwininfo(vim.fn.win_getid())[1] })
     if not ch then
       return
@@ -40,14 +40,14 @@ local function flit(kwargs)
     -- Gotcha! 'leap'.opts redirects to 'leap.opts'.default - we want .current_call!
     local chars = require('leap.opts').eq_class_of[input]
     if chars then
-      chars = vim.tbl_map(function (ch)
+      chars = vim.tbl_map(function(ch)
         if ch == '\n' then
           return '\\n'
         elseif ch == '\\' then
           return '\\\\'
         else return ch end
       end, chars or {})
-      input = '\\(' .. table.concat(chars, '\\|') .. '\\)'  -- "\(a\|b\|c\)"
+      input = '\\(' .. table.concat(chars, '\\|') .. '\\)' -- "\(a\|b\|c\)"
     end
     return '\\V' .. (kwargs.multiline == false and '\\%.l' or '') .. input
   end
@@ -58,7 +58,7 @@ local function flit(kwargs)
     local get_char_at = require('leap.util')['get-char-at']
     local targets = {}
     for pos in search['get-match-positions'](
-        pattern, bounds, { ['backward?'] = kwargs.cc.backward }
+      pattern, bounds, { ['backward?'] = kwargs.cc.backward }
     ) do
       table.insert(targets, { pos = pos, chars = { get_char_at(pos, {}) } })
     end
@@ -96,8 +96,8 @@ local function flit(kwargs)
     -- Remove labels conflicting with the next/prev keys.
     -- The first label will be the repeat key itself.
     -- Note: this doesn't work well for non-alphabetic characters.
-    local filtered = { cc.t and key.t or key.f }
-    local to_ignore = cc.t and { key.t, key.T } or { key.f, key.F }
+    local filtered = { key.f }
+    local to_ignore = { key.f, key.F }
     for _, label in ipairs(require('leap').opts.safe_labels) do
       if not vim.tbl_contains(to_ignore, label) then
         table.insert(filtered, label)
@@ -113,37 +113,34 @@ local function flit(kwargs)
   if type(cc.opts.special_keys.prev_target) == 'string' then
     cc.opts.special_keys.prev_target = { cc.opts.special_keys.prev_target }
   end
-  table.insert(cc.opts.special_keys.next_target, cc.t and key.t or key.f)
-  table.insert(cc.opts.special_keys.prev_target, cc.t and key.T or key.F)
+  table.insert(cc.opts.special_keys.next_target, key.f)
+  table.insert(cc.opts.special_keys.prev_target, key.F)
 
   require('leap').leap(cc)
 end
 
-
 local function setup(kwargs)
   local kwargs = kwargs or {}
-  kwargs.cc = {}  --> would-be `opts.current_call`
+  kwargs.cc = {} --> would-be `opts.current_call`
   kwargs.cc.ft = true
   kwargs.cc.inclusive_op = true
 
   -- Set keymappings.
-  kwargs.keys = kwargs.keys or kwargs.keymaps or { f = 'f', F = 'F', t = 't', T = 'T' }
+  kwargs.keys = kwargs.keys or kwargs.keymaps or { f = 'f', F = 'F', }
   local key = kwargs.keys
   local motion_specific_args = {
     [key.f] = {},
     [key.F] = { backward = true },
-    [key.t] = { offset = -1, t = true },
-    [key.T] = { backward = true, offset = 1, t = true }
   }
   local labeled_modes = kwargs.labeled_modes and kwargs.labeled_modes:gsub('v', 'x') or "x"
   for _, key in pairs(kwargs.keys) do
-    for _, mode in ipairs({'n', 'x', 'o'}) do
+    for _, mode in ipairs({ 'n', 'x', 'o' }) do
       -- Make sure to create a new table for each mode (and not pass the
       -- outer one by reference here inside the loop).
       local kwargs = vim.deepcopy(kwargs)
       kwargs.cc = vim.tbl_extend('force', kwargs.cc, motion_specific_args[key])
       kwargs.unlabeled = not labeled_modes:match(mode)
-      vim.keymap.set(mode, key, function () flit(kwargs) end)
+      vim.keymap.set(mode, key, function() flit(kwargs) end)
     end
   end
 
@@ -155,19 +152,20 @@ local function setup(kwargs)
     local function backdrop_current_line()
       local hl = require('leap.highlight')
       if pcall(api.nvim_get_hl_by_name, hl.group.backdrop, false) then
-          local curline = vim.fn.line(".") - 1  -- API indexing
-          local curcol = vim.fn.col(".")
-          local startcol = state.args.backward and 0 or (curcol + 1)
-          local endcol = state.args.backward and (curcol - 1) or -1
-          vim.highlight.range(0, hl.ns, hl.group.backdrop,
-            { curline, startcol }, { curline, endcol },
-            { priority = hl.priority.backdrop }
-          )
+        local curline = vim.fn.line(".") - 1 -- API indexing
+        local curcol = vim.fn.col(".")
+        local startcol = state.args.backward and 0 or (curcol + 1)
+        local endcol = state.args.backward and (curcol - 1) or -1
+        vim.highlight.range(0, hl.ns, hl.group.backdrop,
+          { curline, startcol }, { curline, endcol },
+          { priority = hl.priority.backdrop }
+        )
       end
     end
+
     api.nvim_create_augroup('Flit', {})
     api.nvim_create_autocmd('User', { pattern = 'LeapEnter', group = 'Flit',
-      callback = function ()
+      callback = function()
         if state.args.ft then
           state.saved_backdrop_fn = require('leap.highlight')['apply-backdrop']
           require('leap.highlight')['apply-backdrop'] = backdrop_current_line
@@ -175,7 +173,7 @@ local function setup(kwargs)
       end
     })
     api.nvim_create_autocmd('User', { pattern = 'LeapLeave', group = 'Flit',
-      callback = function ()
+      callback = function()
         if state.args.ft then
           require('leap.highlight')['apply-backdrop'] = state.saved_backdrop_fn
           state.saved_backdrop_fn = nil
@@ -184,6 +182,5 @@ local function setup(kwargs)
     })
   end
 end
-
 
 return { setup = setup }
